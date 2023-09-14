@@ -271,6 +271,9 @@ function mouseDown(ev) {
 		if (this.dragging && this.dragTarget.isDraggable) {
 			addGlobalClass(this.renderer.paper, "abcjs-dragging-in-progress");
 			this.dragTarget.absEl.highlight(undefined, this.dragColor);
+
+			// 수정 내용 : 음표위에서 mouseDown 이 일어날떄 click 이벤트를 발생시킴
+			notifySelect.bind(this)(this.dragTarget, this.dragYStep, this.selectables.length, this.dragIndex, _ev);
 		}
 	}
 }
@@ -308,6 +311,11 @@ function mouseUp(ev) {
 
 	if (!this.dragTarget)
 		return;
+
+	// 수정 내용 : 음표의 드래그가 끝났을때, 현재 마우스 위치의 음표에 대해 click 이벤트가 실행되도록 함.
+	var positioning = getMousePosition(this, _ev);
+	this.dragTarget = this.selectables[positioning.clickedOn];
+	this.dragIndex = positioning.clickedOn;
 
 	clearSelection.bind(this)();
 	if (this.dragTarget.absEl && this.dragTarget.absEl.highlight) {
