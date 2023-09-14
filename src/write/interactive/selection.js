@@ -293,10 +293,15 @@ function mouseMove(ev) {
 
 	var positioning = getMousePosition(this, _ev);
 
+	// 수정 내용: 마우스 세로 드래그 길이를 변수로 저장하기
+	var yLength = positioning.y - this.dragMouseStart.y;
+
 	var yDist = Math.round((positioning.y - this.dragMouseStart.y) / spacing.STEP);
 	if (yDist !== this.dragYStep) {
 		this.dragYStep = yDist;
-		this.dragTarget.svgEl.setAttribute("transform", "translate(0," + (yDist * spacing.STEP) + ")");
+
+		//수정 내용: 마우스를 음표가 따라다님
+		this.dragTarget.svgEl.setAttribute("transform", "translate(0," + yLength + ")");
 	}
 }
 
