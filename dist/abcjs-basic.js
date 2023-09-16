@@ -23693,7 +23693,7 @@ function findElementByCoord(self, x, y) {
       }
     }
   }
-  return closestIndex >= 0 && minDistance <= 12 ? closestIndex : -1;
+  return closestIndex >= 0 && minDistance <= 20 ? closestIndex : -1;
 }
 function getBestMatchCoordinates(dim, ev, scale) {
   // Different browsers have conflicting meanings for the coordinates that are returned.
