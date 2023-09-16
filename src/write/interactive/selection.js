@@ -41,7 +41,8 @@ function getCoord(ev) {
 		yOffset = svg.viewBox.baseVal.y
 	}
 
-	var svgClicked = ev.target && ev.target.tagName === "svg";
+	//수정 내용: 항상 true를 대입시킴. 음표가 드래그중에 계속 틱틱거림.
+	var svgClicked = true; //ev.target && ev.target.tagName === "svg";
 	var x;
 	var y;
 	if (svgClicked) {
@@ -251,6 +252,9 @@ function attachMissingTouchEventAttributes(touchEv) {
 	touchEv.touches[0].layerY = touchEv.touches[0].pageY;
 }
 
+//set-class 헬퍼 함수 사용
+var setClass = require('../helpers/set-class');
+
 function mouseDown(ev) {
 	// "this" is the EngraverController because of the bind(this) when setting the event listener.
 	var _ev = ev;
@@ -271,6 +275,17 @@ function mouseDown(ev) {
 		if (this.dragging && this.dragTarget.isDraggable) {
 			addGlobalClass(this.renderer.paper, "abcjs-dragging-in-progress");
 			this.dragTarget.absEl.highlight(undefined, this.dragColor);
+
+			//수정 내용 : svg 음표를 복사시킴
+			this.movingSvgEle = this.dragTarget.svgEl.cloneNode(true);
+			//수정 내용 : 복사시킨 음표가 클릭되지 않도록 index에 -1값 대입하기
+			this.movingSvgEle.dataset.index = -1;
+			//수정 내용 : 복사시킨 음표가 css 상에서 클릭되지 않게 함
+			this.movingSvgEle.style.pointerEvents = "none";
+			//수정 내용 : 파란색 적용
+			setClass(this.movingSvgEle.childNodes, "abcjs-note_selected", "", "#0000ff");
+			//수정 내용 : 복사시킨 음표를 적용하기
+			this.dragTarget.svgEl.parentNode.appendChild(this.movingSvgEle);
 
 			// 수정 내용 : 음표위에서 mouseDown 이 일어날떄 click 이벤트를 발생시킴
 			notifySelect.bind(this)(this.dragTarget, this.dragYStep, this.selectables.length, this.dragIndex, _ev);
@@ -295,14 +310,14 @@ function mouseMove(ev) {
 
 	// 수정 내용: 마우스 세로 드래그 길이를 변수로 저장하기
 	var yLength = positioning.y - this.dragMouseStart.y;
+	// 수정 내용: 마우스 세로 드래그 길이를 변수로 저장하기
+	var xLength = positioning.x - this.dragMouseStart.x;
 
 	var yDist = Math.round((positioning.y - this.dragMouseStart.y) / spacing.STEP);
-	if (yDist !== this.dragYStep) {
-		this.dragYStep = yDist;
+	this.dragYStep = yDist;
 
-		//수정 내용: 마우스를 음표가 따라다님
-		this.dragTarget.svgEl.setAttribute("transform", "translate(0," + yLength + ")");
-	}
+	//수정 내용: 마우스를 음표가 따라다님
+	this.movingSvgEle.setAttribute("transform", "translate(" + xLength + "," + yLength + ")");
 }
 
 function mouseUp(ev) {
