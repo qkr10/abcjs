@@ -23831,6 +23831,12 @@ function mouseUp(ev) {
   }
   if (!this.dragTarget) return;
 
+  //수정 내용: 파란색 음표가 있다면 삭제
+  if (this.movingSvgEle) {
+    this.movingSvgEle.remove();
+    delete this.movingSvgEle;
+  }
+
   // 수정 내용 : 음표의 드래그가 끝났을때, 현재 마우스 위치의 음표에 대해 click 이벤트가 실행되도록 함.
   var positioning = getMousePosition(this, _ev);
   this.dragTarget = this.selectables[positioning.clickedOn];
