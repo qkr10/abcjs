@@ -255,6 +255,10 @@ function attachMissingTouchEventAttributes(touchEv) {
 //set-class 헬퍼 함수 사용
 var setClass = require('../helpers/set-class');
 
+function isPitch(str) {
+	return /^[a-zA-Z],*$/.exec(str) !== null;
+}
+
 function mouseDown(ev) {
 	// "this" is the EngraverController because of the bind(this) when setting the event listener.
 	var _ev = ev;
@@ -272,7 +276,39 @@ function mouseDown(ev) {
 		this.dragIndex = positioning.clickedOn;
 		this.dragMechanism = "mouse";
 		this.dragMouseStart = { x: positioning.x, y: positioning.y };
+
+		//수정 내용: 쉼표도 드래그 가능
+		if (this.dragTarget.absEl.type === "rest") {
+			this.dragTarget.isDraggable = true;
+		}
 		if (this.dragging && this.dragTarget.isDraggable) {
+			//수정 내용: 클릭된 음표가 화음인지 구별하기
+			let countNote = 0;
+			if (isPitch(_ev.target.dataset.name)) {
+				const parentNode = _ev.target.parentNode;
+				for (const childNode of parentNode.childNodes) {
+					if (childNode.tagName !== "path")
+						break;
+					countNote += isPitch(childNode.dataset.name) ? 1 : 0;
+				}
+			}
+			this.isChord = countNote > 1;
+			//수정 내용: 화음이라면 클릭된 음표의 path 태그만 분리해서 드래그 시킴
+			if (this.isChord) {
+				addGlobalClass(this.renderer.paper, "abcjs-dragging-in-progress");
+				this.movingSvgTarget = _ev.target;
+				this.movingSvgTarget.setAttribute("fill", "#ff0000");
+
+				this.movingSvgEle = this.movingSvgTarget.cloneNode(true);
+				this.movingSvgEle.dataset.index = -1;
+				this.movingSvgEle.style.pointerEvents = "none";
+				this.movingSvgEle.setAttribute("fill", "#0000ff");
+				_ev.target.parentNode.appendChild(this.movingSvgEle);
+
+				notifySelect.bind(this)(this.dragTarget, this.dragYStep, this.selectables.length, this.dragIndex, _ev);
+				return;
+			}
+
 			addGlobalClass(this.renderer.paper, "abcjs-dragging-in-progress");
 			this.dragTarget.absEl.highlight(undefined, this.dragColor);
 
@@ -337,11 +373,16 @@ function mouseUp(ev) {
 		this.movingSvgEle.remove();
 		delete this.movingSvgEle;
 	}
+	//수정 내용: 화음을 드래그 했다면, 음표 하이라이트 원상복구
+	if (this.isChord) {
+		this.movingSvgTarget.setAttribute("fill", "#000000");
+	}
 
 	// 수정 내용 : 음표의 드래그가 끝났을때, 현재 마우스 위치의 음표에 대해 click 이벤트가 실행되도록 함.
 	var positioning = getMousePosition(this, _ev);
 	this.dragTarget = this.selectables[positioning.clickedOn];
 	this.dragIndex = positioning.clickedOn;
+	console.log(positioning, this.dragTarget);
 
 	clearSelection.bind(this)();
 	if (this.dragTarget.absEl && this.dragTarget.absEl.highlight) {

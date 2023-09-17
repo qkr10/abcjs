@@ -23527,6 +23527,9 @@ module.exports = highlight;
   \********************************************/
 /***/ (function(module, __unused_webpack_exports, __webpack_require__) {
 
+function _createForOfIteratorHelper(o, allowArrayLike) { var it = typeof Symbol !== "undefined" && o[Symbol.iterator] || o["@@iterator"]; if (!it) { if (Array.isArray(o) || (it = _unsupportedIterableToArray(o)) || allowArrayLike && o && typeof o.length === "number") { if (it) o = it; var i = 0; var F = function F() {}; return { s: F, n: function n() { if (i >= o.length) return { done: true }; return { done: false, value: o[i++] }; }, e: function e(_e) { throw _e; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var normalCompletion = true, didErr = false, err; return { s: function s() { it = it.call(o); }, n: function n() { var step = it.next(); normalCompletion = step.done; return step; }, e: function e(_e2) { didErr = true; err = _e2; }, f: function f() { try { if (!normalCompletion && it["return"] != null) it["return"](); } finally { if (didErr) throw err; } } }; }
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) { arr2[i] = arr[i]; } return arr2; }
 var spacing = __webpack_require__(/*! ../helpers/spacing */ "./src/write/helpers/spacing.js");
 function setupSelection(engraver, svgs) {
   engraver.rangeHighlight = rangeHighlight;
@@ -23762,6 +23765,9 @@ function attachMissingTouchEventAttributes(touchEv) {
 
 //set-class 헬퍼 함수 사용
 var setClass = __webpack_require__(/*! ../helpers/set-class */ "./src/write/helpers/set-class.js");
+function isPitch(str) {
+  return /^[a-zA-Z],*$/.exec(str) !== null;
+}
 function mouseDown(ev) {
   // "this" is the EngraverController because of the bind(this) when setting the event listener.
   var _ev = ev;
@@ -23780,7 +23786,44 @@ function mouseDown(ev) {
       x: positioning.x,
       y: positioning.y
     };
+
+    //수정 내용: 쉼표도 드래그 가능
+    if (this.dragTarget.absEl.type === "rest") {
+      this.dragTarget.isDraggable = true;
+    }
     if (this.dragging && this.dragTarget.isDraggable) {
+      //수정 내용: 클릭된 음표가 화음인지 구별하기
+      var countNote = 0;
+      if (isPitch(_ev.target.dataset.name)) {
+        var parentNode = _ev.target.parentNode;
+        var _iterator = _createForOfIteratorHelper(parentNode.childNodes),
+          _step;
+        try {
+          for (_iterator.s(); !(_step = _iterator.n()).done;) {
+            var childNode = _step.value;
+            if (childNode.tagName !== "path") break;
+            countNote += isPitch(childNode.dataset.name) ? 1 : 0;
+          }
+        } catch (err) {
+          _iterator.e(err);
+        } finally {
+          _iterator.f();
+        }
+      }
+      this.isChord = countNote > 1;
+      //수정 내용: 화음이라면 클릭된 음표의 path 태그만 분리해서 드래그 시킴
+      if (this.isChord) {
+        addGlobalClass(this.renderer.paper, "abcjs-dragging-in-progress");
+        this.movingSvgTarget = _ev.target;
+        this.movingSvgTarget.setAttribute("fill", "#ff0000");
+        this.movingSvgEle = this.movingSvgTarget.cloneNode(true);
+        this.movingSvgEle.dataset.index = -1;
+        this.movingSvgEle.style.pointerEvents = "none";
+        this.movingSvgEle.setAttribute("fill", "#0000ff");
+        _ev.target.parentNode.appendChild(this.movingSvgEle);
+        notifySelect.bind(this)(this.dragTarget, this.dragYStep, this.selectables.length, this.dragIndex, _ev);
+        return;
+      }
       addGlobalClass(this.renderer.paper, "abcjs-dragging-in-progress");
       this.dragTarget.absEl.highlight(undefined, this.dragColor);
 
@@ -23836,11 +23879,16 @@ function mouseUp(ev) {
     this.movingSvgEle.remove();
     delete this.movingSvgEle;
   }
+  //수정 내용: 화음을 드래그 했다면, 음표 하이라이트 원상복구
+  if (this.isChord) {
+    this.movingSvgTarget.setAttribute("fill", "#000000");
+  }
 
   // 수정 내용 : 음표의 드래그가 끝났을때, 현재 마우스 위치의 음표에 대해 click 이벤트가 실행되도록 함.
   var positioning = getMousePosition(this, _ev);
   this.dragTarget = this.selectables[positioning.clickedOn];
   this.dragIndex = positioning.clickedOn;
+  console.log(positioning, this.dragTarget);
   clearSelection.bind(this)();
   if (this.dragTarget.absEl && this.dragTarget.absEl.highlight) {
     this.selected = [this.dragTarget.absEl];
